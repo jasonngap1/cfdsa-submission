@@ -1,0 +1,51 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-deploy
+  namespace: myns
+  labels:
+    app: bgg
+    name: db-deploy
+
+spec:
+  # num of instances
+  replicas: 1
+
+  # select pods belonging to this deployment
+  selector:
+    matchLabels:
+      app: bgg
+      name: db-po
+
+  # pod template
+  template:
+    metadata:
+      name: db-po
+      labels:
+        app: bgg
+        name: db-po
+    spec:
+      containers:
+      - name: db-container
+        image: stackupiss/bgg-database:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3306
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-svc
+  labels:
+    app: bgg
+    name: db-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: bgg
+    name: db-po
+  ports:
+  - port: 3306
+    targetPort: 3306
