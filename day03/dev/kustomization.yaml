@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../base
+
+replicas:
+- name: app-deploy
+  count: 1
+
+namespace: myns
+
+namePrefix: dev-
+
+commonLabels:
+  env: dev
+
+images:
+- name: stackupiss/bgg-backend
+  newTag: v2
+
+configMapGenerator:
+- name: bgg-cm
+  behavior: create
+  literals:
+  - BGG_DB_USER=root
+  - BGG_DB_HOST=dev-db-svc.myns.svc.cluster.local
+
+secretGenerator:
+- name: app-secret
+  behavior: create
+  literals:
+  - BGG_DB_PASSWORD=Y2hhbmdlaXQ=

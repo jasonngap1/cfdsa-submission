@@ -1,0 +1,85 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-server
+  namespace: w3-ns
+  labels:
+    app: code-server
+    name: code-server-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: code-server
+      name: code-server-po
+  template:
+    metadata:
+      name: code-server-po
+      labels:
+        app: code-server
+        name: code-server-po
+    spec:
+      volumes:
+      - name: data-vol
+        persistentVolumeClaim: 
+          claimName: code-server-pvc 
+      containers:
+      - name: code-server
+        image: linuxserver/code-server:amd64-latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: code-server-cm
+        - secretRef:
+            name: code-server-secret
+        ports:
+        - containerPort: 8443
+        volumeMounts:
+        - name: data-vol
+          mountPath: /config/workspace
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-server-svc
+  namespace: w3-ns
+  labels:
+    app: code-server
+    name: code-server-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: code-server
+    name: code-server-po
+  ports:
+  - port: 8443
+    targetPort: 8443
+
+--- 
+apiVersion: networking.k8s.io/v1 
+kind: Ingress
+metadata: 
+  name: code-server-ing
+  namespace: w3-ns 
+  labels: 
+    app: code-server
+    name: code-server-ing
+  annotations:
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "5"
+
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: code-144.126.242.179.nip.io # kubectl get svc -A to get the external IP from ingress LB
+    http:
+      paths:
+      - path: / 
+        pathType: Prefix
+        backend: 
+          service:
+            name: code-server-svc
+            port: 
+              number: 8443

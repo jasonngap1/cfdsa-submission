@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-pvc
+  namespace: myns
+  labels:
+    app: bgg
+    name: db-pvc
+  
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: do-block-storage-retain
+  resources:
+    requests:
+      storage: 1Gi

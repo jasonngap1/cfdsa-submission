@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: code-server-pvc
+  namespace: w3-ns 
+  labels:
+    app: code-server
+    name: code-server-pvc
+
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: do-block-storage-retain 
+  resources:
+    requests:
+      storage: 1Gi
