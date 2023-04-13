@@ -1,0 +1,41 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all
+  namespace: db-ns
+  labels:
+    app: db
+    name: deny-all
+spec:
+  policyTypes:
+    - Ingress
+    - Egress
+  podSelector:
+    matchLabels:
+      app: db
+      name: db-po
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-netshoot
+  namespace: db-ns
+spec:
+  policyTypes:
+    - Ingress
+  podSelector:
+    matchLabels:
+      app: db
+      name: db-po
+  ingress:
+  - from:
+    - podSelector:
+        run: db-po
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+  - ports:
+    - port: 3306

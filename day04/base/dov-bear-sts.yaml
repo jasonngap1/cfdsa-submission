@@ -1,0 +1,87 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dov-sts
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: dov
+      name: dov-po-sts
+  template:
+    metadata:
+      name: dov-po-sts
+      labels:
+        app: dov
+        name: dov-po-sts
+    spec:
+      containers:
+      - name: dov-container
+        image: chukmunnlee/go-dov-bear:v1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: INSTANCE_HASH
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        envFrom:
+        - configMapRef:
+            name: dov-cm
+        ports:
+        - containerPort: 3000
+        resources:
+          requests: # the min
+            cpu: 100m
+            memory: 128Mi
+          limits: # the max
+            cpu: 100m
+            memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dov-hsvc
+  labels:
+    app: dov
+    name: dov-hsvc
+spec:
+  ClusterIP: none
+  selector:
+    app: dov
+    name: dov-po
+  ports:
+  - port: 3000
+    targetPort: 3000
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dov-hpa
+  namespace: dov-ns
+  labels:
+    app: dov
+    name: dov-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dov-deploy
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 50
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 30
+

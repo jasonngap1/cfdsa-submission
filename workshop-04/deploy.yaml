@@ -1,0 +1,119 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: w4-svc
+  namespace: w4-ns
+  labels:
+    app: w4
+    name: w4-svc
+spec:
+  clusterIP: None
+  selector:
+    app: w4
+    name: w4-po
+  ports:
+  - name: server-minio
+    port: 9000
+    targetPort: 9000
+  - name: web-minio
+    port: 9090
+    targetPort: 9090
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio-stateful
+spec:
+  selector:
+    matchLabels:
+      app: w4
+  serviceName: w4-svc
+  replicas: 4
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    selector:
+      app: w4
+    spec:
+      storageClassName: do-block-storage
+      resources:
+        requests:
+          storage: 1Gi
+      volumeMode: Filesystem
+      accessModes:
+        - ReadWriteOnce
+    
+  template:
+    metadata:
+      labels:
+        app: w4
+    spec:
+      initContainers:
+      - name: busybox
+        image: busybox
+        
+      containers:
+      - name: w4-po
+        image: bitnami/minio:2023.3.24
+        imagePullPolicy: IfNotPresent
+        command:
+        - minio
+        - server
+        - --address=:9000
+        - --console-address=:9090
+        - http://minio-po-{0...3}.w4-svc.minio.svc.cluster.local/data
+        envFrom:
+          - configMapRef:
+              name: w4-cm
+          - secretRef:
+              name: w4-secret
+        livenessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 900
+        readinessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 900
+        resources:
+          limits:
+            memory: "250Mi"
+            cpu: "200m"
+        ports:
+        - containerPort: 9000
+        - containerPort: 9090     
+        volumeMount:
+        - name: data-vol
+          mountPath: /data   
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: w4-hpa
+  namespace: w4-ns
+  labels:
+    app: w4
+    name: w4-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: w4-deploy
+  minReplicas: 3
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 50
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 30

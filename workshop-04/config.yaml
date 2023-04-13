@@ -1,0 +1,83 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: w4-cm
+  namespace: w4-ns
+  labels:
+    app: w4
+    name: w4-cm
+data:
+  MINIO_ROOT_USER: user
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: w4-secret
+  namespace: w4-ns
+  labels:
+    app: w4
+    name: w4-secret
+type: Opaque
+data:
+  PASSWORD: cGFzc3dvcmQ=
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: w4-ingress
+  labels:
+    name: w4-ingress
+spec:
+  rules:
+  - host: data-139.59.195.68.nip.io
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: w4-svc
+            port: 
+              name: data-port
+  - host: consolde-139.59.195.68.nip.io
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: w4-svc
+            port:
+              name: web-port
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio-netpol
+  namespace: w4-ns
+spec:
+  policyTypes:
+    - Ingress
+  podSelector:
+    matchLabels:
+      app: w4
+      name: w4-po
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: controller
+          app.kubernetes.io/instance: cfdsa-ingress
+          app.kubernetes.io/name: ingress-nginx
+
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+          name: ingress-nginx
+    ports:
+    - port: 9000
+    - port: 9090
